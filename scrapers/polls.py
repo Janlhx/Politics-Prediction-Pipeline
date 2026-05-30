@@ -4,10 +4,17 @@ Recolecta datos de encuestas electorales colombianas 2026.
 Fuentes: datos hardcodeados de encuestas públicas recientes + Wikipedia.
 """
 
+import sys
 import json
 import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
+
+# Forzar UTF-8 en Windows
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+if sys.stderr.encoding != 'utf-8':
+    sys.stderr.reconfigure(encoding='utf-8')
 
 # Encuestas recientes hardcodeadas (fuente: medios colombianos, mayo 2026)
 # Formato: { "firma": str, "fecha": str, "muestra": int, candidato: float }

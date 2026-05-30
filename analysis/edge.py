@@ -4,62 +4,77 @@ Compara probabilidades del modelo (encuestas) vs precios del mercado.
 Calcula edge, oportunidades de arbitraje y recomendaciones.
 """
 
+import sys
 import json
 import os
 from datetime import datetime
 
-# Precios actuales de mercados (actualizados manualmente o via scrapers)
-# Fuente: predictionhunt.com / Kalshi / Polymarket — 30 mayo 2026
+# Forzar UTF-8 en Windows
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+if sys.stderr.encoding != 'utf-8':
+    sys.stderr.reconfigure(encoding='utf-8')
+
+# Precios actuales de mercados
+# Fuente: Polymarket API (events endpoint) — 30 mayo 2026, 19:30 UTC
+# Slugs verificados: colombia-presidential-election / colombia-presidential-election-1st-round-winner
 MARKET_PRICES = {
     # Mercado: ganador final (incluye segunda vuelta)
+    # Polymarket: De la Espriella domina — mercado descuenta 2a vuelta
     "ganador_final": {
         "Cepeda": {
-            "kalshi": 0.37,
-            "polymarket": 0.38,
-            "mid": 0.375,
+            "polymarket": 0.365,
+            "mid": 0.365,
         },
         "De la Espriella": {
-            "kalshi": 0.63,
-            "polymarket": 0.61,
-            "mid": 0.62,
+            "polymarket": 0.625,
+            "mid": 0.625,
         },
         "Valencia": {
-            "kalshi": 0.03,
-            "polymarket": 0.032,
-            "mid": 0.031,
+            "polymarket": 0.029,
+            "mid": 0.029,
         },
     },
-    # Mercado: ganador primera vuelta (31 mayo)
+    # Mercado: ganador primera vuelta (quien GANA MAS VOTOS el 31 mayo)
+    # OJO: no necesita 50%+1, solo pluralidad
     "ganador_primera_vuelta": {
         "Cepeda": {
-            "polymarket": 0.62,   # referencia aproximada
-            "mid": 0.62,
+            "polymarket": 0.775,   # favorito fuerte para ganar en votos
+            "mid": 0.775,
         },
         "De la Espriella": {
-            "polymarket": 0.25,
-            "mid": 0.25,
+            "polymarket": 0.224,
+            "mid": 0.224,
         },
         "Valencia": {
-            "polymarket": 0.10,
-            "mid": 0.10,
+            "polymarket": 0.002,   # prácticamente descartada
+            "mid": 0.002,
         },
     },
+    # Mercado extra: probabilidad de segunda vuelta
+    # 87.5% chance de segunda vuelta (nadie llega al 50%+1)
+    # "segunda_vuelta_prob": 0.875,
 }
 
-# Probabilidades del modelo (de polls.py, promedio reciente)
+# Probabilidades del modelo
+# Basadas en promedio reciente de encuestas (decaimiento semanal 0.7)
+# Normalizado sobre los 3 candidatos principales
 MODEL_PROBS = {
+    # Probabilidad de GANAR MAS VOTOS en primera vuelta (pluralidad)
+    # Aproximamos con la distribución de encuestas normalizada
     "primera_vuelta": {
-        "Cepeda": 0.4860,       # ~49% encuestas normalizadas
-        "De la Espriella": 0.3370,
-        "Valencia": 0.1770,
+        "Cepeda": 0.4449,       # 44.5% encuestas recientes normalizadas
+        "De la Espriella": 0.3339,
+        "Valencia": 0.2212,
     },
-    # Para ganador final, ajustamos por escenarios de segunda vuelta
-    # Guarumo: en 2a vuelta, De la Espriella > Cepeda y Valencia > Cepeda
-    # → Cepeda tiene menor chance en final que en 1a vuelta
+    # Para ganador final, combinamos escenarios:
+    # - Cepeda gana 1a vuelta (44%) pero pierde 2a vuelta (encuestas Guarumo)
+    # - De la Espriella 2a > Cepeda; Valencia 2a > Cepeda también
+    # → probabilidad final corregida por 2a vuelta
     "ganador_final": {
-        "Cepeda": 0.38,         # baja porque pierde en segunda vuelta según encuestas
-        "De la Espriella": 0.42,
-        "Valencia": 0.20,
+        "Cepeda": 0.28,         # baja fuerte: pierde en 2a vuelta
+        "De la Espriella": 0.52,  # sube: gana en 2a vuelta vs Cepeda
+        "Valencia": 0.20,         # solo si llega a 2a, poco probable
     },
 }
 
